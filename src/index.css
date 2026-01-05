@@ -1,0 +1,29 @@
+@import "./theme.css";
+
+/* 1. Use a more-intuitive box-sizing model */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 1rem;
+}
+.week {
+}
+.day {
+}
+.hour {
+  display: flex;
+}
+.hour-label {
+}
+.hour-slot-group {
+}
+.hour-slot {
+}
+
+.week {
+  display: flex;
+}
