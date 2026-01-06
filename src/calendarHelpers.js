@@ -1,3 +1,5 @@
+import { CalendarDateTime } from "@internationalized/date";
+
 export function getDayClasses(dayDate, monthAnchor, options = {}) {
   const { highlightWeekends = true, highlightToday = true } = options;
   const classes = ["day-cell"];
@@ -19,14 +21,30 @@ export function getDayClasses(dayDate, monthAnchor, options = {}) {
   return classes.join(" ");
 }
 
-// function MonthView({ days, anchor }) {
-//   return (
-//     <div className="month-grid">
-//       {days.map(day => (
-//         <div key={day.key} className={getDayClasses(day.date, anchor)}>
-//           {day.date.day}
-//         </div>
-//       ))}
-//     </div>
-//   );
-// }
+/**
+ * Construct a CalendarDateTime from a day and a slot
+ */
+export function getDateTime(day, slot) {
+  return new CalendarDateTime(
+    day.date.year,
+    day.date.month,
+    day.date.day,
+    slot.time.hour,
+    slot.time.minute,
+    slot.time.second
+  );
+}
+
+/**
+ * Default click handler for cells
+ */
+export function handleCellClick(day, slot) {
+  const dateTime = getDateTime(day, slot);
+  console.log(dateTime.toString());
+}
+
+export function formatHourLabel(label, slotIndex) {
+  if (slotIndex % 2 !== 0) return "";
+
+  return label.replace(":00 ", "");
+}

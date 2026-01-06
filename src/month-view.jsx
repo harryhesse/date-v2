@@ -6,22 +6,19 @@ export default function MonthView({ days, anchor }) {
   }
 
   return (
-    <>
-      <p>month view</p>
-      <div className="month">
-        {weeks.map((week, wi) => (
-          <div className="week" key={wi}>
-            {week.map((day) => (
-              <div className="day" key={day.key}>
-                {/* Optionally style days outside current month */}
-                <div className="day-number">{day.date.day}</div>
+    <div className="month">
+      {weeks.map((week, wi) => (
+        <div className="week" key={wi}>
+          {week.map((day) => (
+            <div className="day" key={day.key}>
+              {/* Optionally style days outside current month */}
+              <div className="day-number">{day.date.day}</div>
 
-                {/* Render hour rows */}
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </>
+              {/* Render hour rows */}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }

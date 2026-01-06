@@ -10,7 +10,7 @@ export const VIEWS = {
 };
 
 /* ---------------------------------------------
-   Helpers
+   Formatting helpers
 --------------------------------------------- */
 function formatTime(hour, minute) {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -18,37 +18,16 @@ function formatTime(hour, minute) {
   return `${h12}:${minute.toString().padStart(2, "0")} ${period}`;
 }
 
-function formatHourLabel(hour) {
+export function formatHourLabel(hour) {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
   const period = hour < 12 ? "AM" : "PM";
   return `${h12} ${period}`;
 }
 
 /* ---------------------------------------------
-   Group slots by hour
+   Slot factory (shared)
 --------------------------------------------- */
-function groupSlotsByHour(slots, slotMinutes = 30) {
-  const rows = Array.from({ length: 24 }, (_, h) => ({
-    hour: h,
-    hourLabel: formatHourLabel(h),
-    slots: [],
-  }));
-
-  for (const slot of slots) {
-    rows[slot.time.hour].slots.push(slot);
-  }
-
-  return rows;
-}
-
-/* ---------------------------------------------
-   Day factory (configurable)
---------------------------------------------- */
-function createDay(
-  date,
-  options = { startHour: 0, endHour: 24, slotMinutes: 30 }
-) {
-  const { startHour, endHour, slotMinutes } = options;
+function createSlots({ startHour, endHour, slotMinutes }) {
   const slots = [];
 
   for (let h = startHour; h < endHour; h++) {
@@ -60,11 +39,16 @@ function createDay(
     }
   }
 
+  return slots;
+}
+
+/* ---------------------------------------------
+   Day factory (pure)
+--------------------------------------------- */
+function createDay(date) {
   return {
     date,
     key: date.toString(),
-    slots,
-    hourRows: groupSlotsByHour(slots, slotMinutes),
   };
 }
 
@@ -76,8 +60,8 @@ function normalizeWeek(date) {
 }
 
 function normalizeMonth(date) {
-  const firstOfMonth = new CalendarDate(date.year, date.month, 1);
-  return firstOfMonth.subtract({ days: firstOfMonth.dayOfWeek });
+  const first = new CalendarDate(date.year, date.month, 1);
+  return first.subtract({ days: first.dayOfWeek });
 }
 
 /* ---------------------------------------------
@@ -87,7 +71,8 @@ function buildDay(date, options) {
   return {
     type: VIEWS.DAY,
     anchor: date,
-    days: [createDay(date, options)],
+    slots: createSlots(options),
+    days: [createDay(date)],
   };
 }
 
@@ -97,8 +82,9 @@ function buildWeek(date, options) {
   return {
     type: VIEWS.WEEK,
     anchor: start,
+    slots: createSlots(options),
     days: Array.from({ length: 7 }, (_, i) =>
-      createDay(start.add({ days: i }), options)
+      createDay(start.add({ days: i }))
     ),
   };
 }
@@ -109,14 +95,15 @@ function buildMonth(date, options) {
   return {
     type: VIEWS.MONTH,
     anchor: start,
+    slots: createSlots(options),
     days: Array.from({ length: 42 }, (_, i) =>
-      createDay(start.add({ days: i }), options)
+      createDay(start.add({ days: i }))
     ),
   };
 }
 
 /* ---------------------------------------------
-   Navigation
+   Navigation helpers
 --------------------------------------------- */
 function nextDate(view, date) {
   switch (view) {
@@ -145,13 +132,16 @@ function prevDate(view, date) {
 }
 
 /* ---------------------------------------------
-   Public API v2
+   Public API
 --------------------------------------------- */
 export const CalendarDataAPI = (() => {
   let cursor = today();
 
-  // Default configuration
-  let defaultOptions = { startHour: 0, endHour: 24, slotMinutes: 30 };
+  let defaultOptions = {
+    startHour: 0,
+    endHour: 24,
+    slotMinutes: 30,
+  };
 
   function getView(view, date = cursor, options = defaultOptions) {
     cursor = date;
@@ -171,22 +161,21 @@ export const CalendarDataAPI = (() => {
   return {
     getView,
 
-    next(view, options = defaultOptions) {
+    next(view, options) {
       cursor = nextDate(view, cursor);
-      return getView(view, cursor, options);
+      return getView(view, cursor, options ?? defaultOptions);
     },
 
-    prev(view, options = defaultOptions) {
+    prev(view, options) {
       cursor = prevDate(view, cursor);
-      return getView(view, cursor, options);
+      return getView(view, cursor, options ?? defaultOptions);
     },
 
-    today(view, options = defaultOptions) {
+    today(view, options) {
       cursor = today();
-      return getView(view, cursor, options);
+      return getView(view, cursor, options ?? defaultOptions);
     },
 
-    // Allow changing default slot/hour config
     setOptions(options) {
       defaultOptions = { ...defaultOptions, ...options };
     },

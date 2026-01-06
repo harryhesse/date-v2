@@ -1,29 +1,19 @@
-export default function DayView({ day }) {
-  // console.log(day);
+import TimeGrid from "./TimeGrid";
+
+export default function DayView({ data }) {
+  const { anchor, days, slots } = data;
+  const SLOT_HEIGHT =
+    parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue(
+        "--slot-height"
+      )
+    ) || 40;
+
   return (
-    <>
-      <p>day view</p>
-      <div>
-        <div className="day">
-          {day.hourRows.map((hR, i) => {
-            if (hR.slots.length) {
-              return (
-                <div className="hour" key={hR.hourLabel}>
-                  <div className="hour-label">{hR.hourLabel}</div>
-                  <div className="hour-slot-group">
-                    {hR.slots.map((s, j) => (
-                      <div className="hour-slot" key={s.label}>
-                        {s.label}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
-            return null; // Always return something
-          })}
-        </div>
-      </div>
-    </>
+    <div className="timeGridDay-view">
+      <div className="timegrid-header">{anchor.toString()}</div>
+      <hr />
+      <TimeGrid days={days} slots={slots} foo={"day"} />
+    </div>
   );
 }
