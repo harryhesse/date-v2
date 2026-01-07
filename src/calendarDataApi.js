@@ -1,4 +1,4 @@
-import { CalendarDate, Time, today } from "@internationalized/date";
+import { DateTime, Info } from "luxon";
 
 /* ---------------------------------------------
    Constants
@@ -8,6 +8,11 @@ export const VIEWS = {
   WEEK: "week",
   MONTH: "month",
 };
+
+/* ---------------------------------------------
+   Locale (first-class)
+--------------------------------------------- */
+let locale = DateTime.local().locale;
 
 /* ---------------------------------------------
    Formatting helpers
@@ -25,15 +30,23 @@ export function formatHourLabel(hour) {
 }
 
 /* ---------------------------------------------
-   Slot factory (shared)
+   Slot factory (REAL DateTimes)
 --------------------------------------------- */
-function createSlots({ startHour, endHour, slotMinutes }) {
+function createSlots(date, { startHour, endHour, slotMinutes }) {
   const slots = [];
+  const base = date.startOf("day");
 
   for (let h = startHour; h < endHour; h++) {
     for (let m = 0; m < 60; m += slotMinutes) {
+      const datetime = base.set({
+        hour: h,
+        minute: m,
+        second: 0,
+        millisecond: 0,
+      });
+
       slots.push({
-        time: new Time(h, m),
+        datetime,
         label: formatTime(h, m),
       });
     }
@@ -43,62 +56,85 @@ function createSlots({ startHour, endHour, slotMinutes }) {
 }
 
 /* ---------------------------------------------
-   Day factory (pure)
+   Day factory
 --------------------------------------------- */
-function createDay(date) {
+function createDay(date, options) {
+  const d = date.startOf("day");
+
   return {
-    date,
-    key: date.toString(),
+    date: d,
+    key: d.toISODate(),
+    slots: createSlots(d, options),
   };
 }
 
 /* ---------------------------------------------
-   Normalization (anchors)
+   Locale-aware week helpers
 --------------------------------------------- */
-function normalizeWeek(date) {
-  return date.subtract({ days: date.dayOfWeek });
+function startOfWeek(date) {
+  const firstDay = Info.getStartOfWeek({ locale: date.locale });
+  const diff = (date.weekday - firstDay + 7) % 7;
+  return date.minus({ days: diff }).startOf("day");
 }
 
-function normalizeMonth(date) {
-  const first = new CalendarDate(date.year, date.month, 1);
-  return first.subtract({ days: first.dayOfWeek });
+function endOfWeek(date) {
+  return startOfWeek(date).plus({ days: 6 }).endOf("day");
 }
 
 /* ---------------------------------------------
-   Builders (views)
+   Month normalization (full weeks)
+--------------------------------------------- */
+function normalizeMonth(date) {
+  const firstOfMonth = date.startOf("month");
+  const lastOfMonth = date.endOf("month");
+
+  return {
+    start: startOfWeek(firstOfMonth),
+    end: endOfWeek(lastOfMonth),
+  };
+}
+
+/* ---------------------------------------------
+   Builders
 --------------------------------------------- */
 function buildDay(date, options) {
+  const d = date.startOf("day");
+
   return {
     type: VIEWS.DAY,
-    anchor: date,
-    slots: createSlots(options),
-    days: [createDay(date)],
+    anchor: d,
+    days: [createDay(d, options)],
   };
 }
 
 function buildWeek(date, options) {
-  const start = normalizeWeek(date);
+  const start = startOfWeek(date);
 
   return {
     type: VIEWS.WEEK,
     anchor: start,
-    slots: createSlots(options),
     days: Array.from({ length: 7 }, (_, i) =>
-      createDay(start.add({ days: i }))
+      createDay(start.plus({ days: i }), options)
     ),
   };
 }
 
 function buildMonth(date, options) {
-  const start = normalizeMonth(date);
+  const monthAnchor = date.startOf("month");
+  const { start, end } = normalizeMonth(date);
+
+  const days = [];
+  let cursor = start;
+
+  while (cursor <= end) {
+    days.push(createDay(cursor, options));
+    cursor = cursor.plus({ days: 1 });
+  }
 
   return {
     type: VIEWS.MONTH,
-    anchor: start,
-    slots: createSlots(options),
-    days: Array.from({ length: 42 }, (_, i) =>
-      createDay(start.add({ days: i }))
-    ),
+    anchor: monthAnchor,
+    days,
   };
 }
 
@@ -108,11 +144,11 @@ function buildMonth(date, options) {
 function nextDate(view, date) {
   switch (view) {
     case VIEWS.DAY:
-      return date.add({ days: 1 });
+      return date.plus({ days: 1 });
     case VIEWS.WEEK:
-      return normalizeWeek(date).add({ days: 7 });
+      return startOfWeek(date).plus({ weeks: 1 });
     case VIEWS.MONTH:
-      return new CalendarDate(date.year, date.month, 1).add({ months: 1 });
+      return date.startOf("month").plus({ months: 1 });
     default:
       return date;
   }
@@ -121,11 +157,11 @@ function nextDate(view, date) {
 function prevDate(view, date) {
   switch (view) {
     case VIEWS.DAY:
-      return date.subtract({ days: 1 });
+      return date.minus({ days: 1 });
     case VIEWS.WEEK:
-      return normalizeWeek(date).subtract({ days: 7 });
+      return startOfWeek(date).minus({ weeks: 1 });
     case VIEWS.MONTH:
-      return new CalendarDate(date.year, date.month, 1).subtract({ months: 1 });
+      return date.startOf("month").minus({ months: 1 });
     default:
       return date;
   }
@@ -135,7 +171,7 @@ function prevDate(view, date) {
    Public API
 --------------------------------------------- */
 export const CalendarDataAPI = (() => {
-  let cursor = today();
+  let cursor = DateTime.local().setLocale(locale).startOf("day");
 
   let defaultOptions = {
     startHour: 0,
@@ -144,7 +180,7 @@ export const CalendarDataAPI = (() => {
   };
 
   function getView(view, date = cursor, options = defaultOptions) {
-    cursor = date;
+    cursor = date.setLocale(locale);
 
     switch (view) {
       case VIEWS.DAY:
@@ -172,12 +208,17 @@ export const CalendarDataAPI = (() => {
     },
 
     today(view, options) {
-      cursor = today();
+      cursor = DateTime.local().setLocale(locale).startOf("day");
       return getView(view, cursor, options ?? defaultOptions);
     },
 
     setOptions(options) {
       defaultOptions = { ...defaultOptions, ...options };
+    },
+
+    setLocale(newLocale) {
+      locale = newLocale;
+      cursor = cursor.setLocale(locale);
     },
   };
 })();

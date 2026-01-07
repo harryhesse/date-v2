@@ -1,46 +1,34 @@
 import { CalendarDateTime } from "@internationalized/date";
 
+import { DateTime } from "luxon";
+
 export function getDayClasses(dayDate, monthAnchor, options = {}) {
   const { highlightWeekends = true, highlightToday = true } = options;
-  const classes = ["day-cell"];
+  const classes = ["daygrid-cell"];
 
-  if (dayDate.month !== monthAnchor.month) classes.push("other-month");
-  if (highlightWeekends && dayDate.weekday >= 5) classes.push("weekend");
+  // Outside active month
+  if (dayDate.month !== monthAnchor.month) {
+    classes.push("other-month");
+  }
 
-  if (highlightToday) {
-    const now = new Date();
-    if (
-      dayDate.year === now.getFullYear() &&
-      dayDate.month === now.getMonth() + 1 &&
-      dayDate.day === now.getDate()
-    ) {
-      classes.push("today");
-    }
+  // Weekend (ISO: Saturday = 6, Sunday = 7)
+  if (highlightWeekends && dayDate.weekday >= 6) {
+    classes.push("weekend");
+  }
+
+  // Today
+  if (highlightToday && dayDate.hasSame(DateTime.local(), "day")) {
+    classes.push("today");
   }
 
   return classes.join(" ");
 }
 
 /**
- * Construct a CalendarDateTime from a day and a slot
- */
-export function getDateTime(day, slot) {
-  return new CalendarDateTime(
-    day.date.year,
-    day.date.month,
-    day.date.day,
-    slot.time.hour,
-    slot.time.minute,
-    slot.time.second
-  );
-}
-
-/**
  * Default click handler for cells
  */
-export function handleCellClick(day, slot) {
-  const dateTime = getDateTime(day, slot);
-  console.log(dateTime.toString());
+export function handleCellClick(dt) {
+  console.log(dt.toString());
 }
 
 export function formatHourLabel(label, slotIndex) {

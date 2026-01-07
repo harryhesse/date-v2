@@ -1,8 +1,13 @@
 import React from "react";
 import { formatHourLabel, handleCellClick } from "./calendarHelpers";
+import { cls } from "./utility";
 
-export default function TimeGrid({ days = [], slots = [] }) {
-  if (!days.length || !slots.length) return null;
+export default function TimeGrid({ days = [] }) {
+  if (!days.length) return null;
+
+  // Use slots from the first day to build time rows
+  const slots = days[0].slots;
+  if (!slots?.length) return null;
 
   return (
     <div className="timegrid-scroll-container">
@@ -23,23 +28,33 @@ export default function TimeGrid({ days = [], slots = [] }) {
         ))}
 
         {/* Time rows */}
-        {slots.map((slot, index) => (
-          <React.Fragment key={slot.label}>
+        {slots.map((slot, slotIdx) => (
+          <React.Fragment key={slot.datetime.toISO()}>
+            {/* Time label */}
             <div
-              style={{ borderTop: index === 0 ? "none" : undefined }}
-              className="timegrid-time-cell"
+              className={cls(
+                "timegrid-time-cell",
+                slotIdx === 0 && "border-t-0"
+              )}
             >
-              {formatHourLabel(slot.label, index)}
+              {formatHourLabel(slot.label, slotIdx)}
             </div>
 
-            {days.map((day, i) => (
-              <div
-                style={{ borderTop: index === 0 ? "none" : undefined }}
-                key={`${day.key}-${slot.label}`}
-                className="timegrid-cell"
-                onClick={() => handleCellClick(day, slot)}
-              />
-            ))}
+            {/* Cells */}
+            {days.map((day) => {
+              const daySlot = day.slots[slotIdx];
+
+              return (
+                <div
+                  key={`${day.key}-${slot.datetime.toISOTime()}`}
+                  className={cls(
+                    "timegrid-cell",
+                    slotIdx === 0 && "border-t-0"
+                  )}
+                  onClick={() => handleCellClick(daySlot.datetime)}
+                />
+              );
+            })}
           </React.Fragment>
         ))}
       </div>

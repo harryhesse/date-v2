@@ -3,6 +3,7 @@ import { CalendarDataAPI, VIEWS } from "./calendarDataApi";
 import DayView from "./day-view";
 import WeekView from "./week-view";
 import MonthView from "./month-view";
+import { DateTime } from "luxon";
 
 // Placeholder events stored as ISO strings
 const placeholderEvents = [
@@ -82,6 +83,7 @@ function App() {
   };
 
   const events = mapEventsToGrid(placeholderEvents, data);
+  console.log(data);
 
   function renderView(data) {
     switch (data.type) {
@@ -92,14 +94,12 @@ function App() {
         return <WeekView data={data} />;
 
       case VIEWS.MONTH:
-        return <MonthView days={data.days} />;
+        return <MonthView data={data} />;
 
       default:
         return null;
     }
   }
-
-  console.log(data);
 
   return (
     <div className="scheduler">
